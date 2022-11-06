@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from datetime import datetime
 import os
 import json
@@ -119,25 +120,25 @@ def check_for_matching_dates():
 # job = scheduler.add_job(check_for_matching_dates, 'cron', day_of_week ='mon-sun', hour=0, minute=1)
 # scheduler.start()
 
+check_for_matching_dates()
+# class Config:
+#     SCHEDULER_API_ENABLED = True
 
-class Config:
-    SCHEDULER_API_ENABLED = True
-
-app = Flask(__name__, static_url_path='/static')
-app.config.from_object(Config())
-scheduler = APScheduler()
-scheduler.init_app(app)
-scheduler.start()
-
-
-@app.route('/')
-def main_page():
-    return render_template('index.html')
+# app = Flask(__name__, static_url_path='/static')
+# app.config.from_object(Config())
+# scheduler = APScheduler()
+# scheduler.init_app(app)
+# scheduler.start()
 
 
-@scheduler.task('interval', id='do_job_1', seconds=5)
-def job1():
-    print('Job 1 executed')
+# @app.route('/')
+# def main_page():
+#     return render_template('index.html')
+
+
+# @scheduler.task('interval', id='do_job_1', seconds=5)
+# def job1():
+#     print('Job 1 executed')
 
 if __name__ == '__main__':
     app.run()
