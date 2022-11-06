@@ -198,7 +198,7 @@ def create_contacts_dataframe():
         return False
 
 
-@scheduler.task('interval', id='send_greeting_message', minutes=10, misfire_grace_time=3600)
+@scheduler.task('interval', id='send_greeting_message', minutes=1, misfire_grace_time=3600)
 def send_greeting_message(sender=""):
     """Calls the send_greeting_wish() function if today is someone's birthday.
 
