@@ -227,9 +227,6 @@ def send_greeting_message(sender=""):
 # job = scheduler.add_job(check_for_matching_dates, 'cron', day_of_week ='mon-sun', hour=0, minute=0, second=5)
 # scheduler.start()
 
-check_for_matching_dates()
-# class Config:
-#     SCHEDULER_API_ENABLED = True
 
 @app.route('/', methods = ['POST', 'GET'])
 def main_page():
