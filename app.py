@@ -15,6 +15,15 @@ account_sid = 'AC64cf9331582590cc9d79870ced615333'
 auth_token = os.environ['TWILIO_AUTH_TOKEN']
 client = Client(account_sid, auth_token)
 
+class Config:
+    SCHEDULER_API_ENABLED = True
+
+app = Flask(__name__, static_url_path='/static')
+app.config.from_object(Config())
+scheduler = APScheduler()
+scheduler.init_app(app)
+scheduler.start()
+
 
 def send_birthday_wish(client, recipient_number, recipient_name):
     """Send a birthday wish to a recipient using their WhatsApp number.
@@ -88,6 +97,8 @@ def create_birthdays_dataframe():
         print(repr(e))
         return False
 
+
+@scheduler.task('interval', id='do_job_1', seconds=10, misfire_grace_time=3600)
 def check_for_matching_dates():
     """Calls the send_birthday_wish() function if today is someone's birthday.
 
@@ -96,6 +107,7 @@ def check_for_matching_dates():
     Returns:
         True if successful, otherwise returns False.
     """
+    print("Running interval function")
     try:
         birthdays_df = create_birthdays_dataframe()
         birthdays_df["day"] = birthdays_df["Birth Date"].dt.day
@@ -122,16 +134,6 @@ def check_for_matching_dates():
 # scheduler.start()
 
 
-class Config:
-    SCHEDULER_API_ENABLED = True
-
-app = Flask(__name__, static_url_path='/static')
-app.config.from_object(Config())
-scheduler = APScheduler()
-scheduler.init_app(app)
-scheduler.start()
-
-
 @app.route('/', methods = ['POST', 'GET'])
 def main_page():
     if request.method == 'POST':
@@ -150,9 +152,9 @@ def main_page():
     return render_template('index.html')
 
 
-@scheduler.task('interval', id='do_job_1', minutes=1, misfire_grace_time=3600)
-def job1():
-    print('Job 1 executed')
+# @scheduler.task('interval', id='do_job_1', minutes=1, misfire_grace_time=3600)
+# def job1():
+#     print('Job 1 executed')
 
 
 if __name__ == '__main__':
