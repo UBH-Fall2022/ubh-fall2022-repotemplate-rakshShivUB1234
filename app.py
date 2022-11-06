@@ -5,11 +5,13 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask
 import pandas as pd
 from twilio.rest import Client
+from flask import Flask, render_template
+from flask_apscheduler import APScheduler
 
 app = Flask(__name__)
 
 account_sid = 'AC64cf9331582590cc9d79870ced615333'
-auth_token = '269f82d1c467469e9ca43861570d365a'
+auth_token = os.environ['TWILIO_AUTH_TOKEN']
 client = Client(account_sid, auth_token)
 
 
@@ -113,10 +115,29 @@ def check_for_matching_dates():
         print(repr(e))
         return False
 
-scheduler = BackgroundScheduler()
-job = scheduler.add_job(check_for_matching_dates, 'cron', day_of_week ='mon-sun', hour=0, minute=1)
+# scheduler = BackgroundScheduler()
+# job = scheduler.add_job(check_for_matching_dates, 'cron', day_of_week ='mon-sun', hour=0, minute=1)
+# scheduler.start()
+
+
+class Config:
+    SCHEDULER_API_ENABLED = True
+
+app = Flask(__name__, static_url_path='/static')
+app.config.from_object(Config())
+scheduler = APScheduler()
+scheduler.init_app(app)
 scheduler.start()
 
+
+@app.route('/')
+def main_page():
+    return render_template('index.html')
+
+
+@scheduler.task('interval', id='do_job_1', seconds=5)
+def job1():
+    print('Job 1 executed')
 
 if __name__ == '__main__':
     app.run()
