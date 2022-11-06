@@ -6,7 +6,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask
 import pandas as pd
 from twilio.rest import Client
-from flask import Flask, render_template
+from csv import writer
+from flask import Flask, render_template, request
 from flask_apscheduler import APScheduler
 
 app = Flask(__name__)
@@ -14,6 +15,15 @@ app = Flask(__name__)
 account_sid = 'AC64cf9331582590cc9d79870ced615333'
 auth_token = os.environ['TWILIO_AUTH_TOKEN']
 client = Client(account_sid, auth_token)
+
+class Config:
+    SCHEDULER_API_ENABLED = True
+
+app = Flask(__name__, static_url_path='/static')
+app.config.from_object(Config())
+scheduler = APScheduler()
+scheduler.init_app(app)
+scheduler.start()
 
 
 def send_birthday_wish(client, recipient_number, recipient_name):
@@ -50,8 +60,8 @@ I am so proud of you {}.""".format(recipient_name)
     try:
         message = client.messages.create(
             body=birthday_wish,
-     	    from_='whatsapp:+14155238886',  # The default Sandbox number provided by Twilio
-     	    to='whatsapp:' + recipient_number
+            from_='whatsapp:+14155238886',  # The default Sandbox number provided by Twilio
+            to='whatsapp:' + recipient_number
         )
 
         print("Birthday wish sent to", recipient_name, "on WhatsApp number", recipient_number)
@@ -88,6 +98,8 @@ def create_birthdays_dataframe():
         print(repr(e))
         return False
 
+
+@scheduler.task('interval', id='do_job_1', seconds=10, misfire_grace_time=3600)
 def check_for_matching_dates():
     """Calls the send_birthday_wish() function if today is someone's birthday.
 
@@ -96,6 +108,7 @@ def check_for_matching_dates():
     Returns:
         True if successful, otherwise returns False.
     """
+    print("Running interval function")
     try:
         birthdays_df = create_birthdays_dataframe()
         birthdays_df["day"] = birthdays_df["Birth Date"].dt.day
@@ -116,29 +129,37 @@ def check_for_matching_dates():
         print(repr(e))
         return False
 
+
 # scheduler = BackgroundScheduler()
-# job = scheduler.add_job(check_for_matching_dates, 'cron', day_of_week ='mon-sun', hour=0, minute=1)
+# job = scheduler.add_job(check_for_matching_dates, 'cron', day_of_week ='mon-sun', hour=0, minute=0, second=5)
 # scheduler.start()
 
 check_for_matching_dates()
 # class Config:
 #     SCHEDULER_API_ENABLED = True
 
-# app = Flask(__name__, static_url_path='/static')
-# app.config.from_object(Config())
-# scheduler = APScheduler()
-# scheduler.init_app(app)
-# scheduler.start()
+@app.route('/', methods = ['POST', 'GET'])
+def main_page():
+    if request.method == 'POST':
+        form_data = request.form
+        if form_data.get("category") == "user_create":
+            csv_file = 'contacts.csv'
+            user_list = [form_data.get('name'), form_data.get('relation'), form_data.get('phone')]
+        else:
+            csv_file = 'birthdays.csv'
+            user_list = [form_data.get('name'), form_data.get('date'), form_data.get('phone')]
+        print(user_list)
+        with open(csv_file, 'a+', newline='') as f_object:
+            writer_object = writer(f_object)
+            writer_object.writerow(user_list)
+            f_object.close()
+    return render_template('index.html')
 
 
-# @app.route('/')
-# def main_page():
-#     return render_template('index.html')
-
-
-# @scheduler.task('interval', id='do_job_1', seconds=5)
+# @scheduler.task('interval', id='do_job_1', minutes=1, misfire_grace_time=3600)
 # def job1():
 #     print('Job 1 executed')
+
 
 if __name__ == '__main__':
     app.run()
