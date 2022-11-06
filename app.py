@@ -252,5 +252,5 @@ def main_page():
 #     print('Job 1 executed')
 
 
-if __name__ == '__main__':
-    app.run()
+# if __name__ == '__main__':
+#     app.run()
