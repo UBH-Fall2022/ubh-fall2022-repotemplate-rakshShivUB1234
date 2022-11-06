@@ -1,0 +1,122 @@
+from datetime import datetime
+import os
+import json
+from apscheduler.schedulers.background import BackgroundScheduler
+from flask import Flask
+import pandas as pd
+from twilio.rest import Client
+
+app = Flask(__name__)
+
+account_sid = 'AC64cf9331582590cc9d79870ced615333'
+auth_token = '269f82d1c467469e9ca43861570d365a'
+client = Client(account_sid, auth_token)
+
+
+def send_birthday_wish(client, recipient_number, recipient_name):
+    """Send a birthday wish to a recipient using their WhatsApp number.
+
+    Args:
+        client (object): An instantiation of the Twilio API's Client object
+        recipient_number (str): The number associated with the recipient's WhatsApp account,
+            including the country code, and prepended with '+'. For example, '+14155238886'.
+        recipient_name (str): The recipient's name
+
+    Returns:
+        True if successful, otherwise returns False
+    """
+
+
+    import requests
+
+    url = "https://ajith-messages.p.rapidapi.com/getMsgs"
+
+    querystring = {"category":"Birthday"}
+
+    headers = {
+        "X-RapidAPI-Key": "f29217e6c5msh0b30c4948c69cf3p129f36jsn3d7abd77728a",
+        "X-RapidAPI-Host": "ajith-messages.p.rapidapi.com"
+    }
+
+    response = requests.request("GET", url, headers=headers, params=querystring)
+
+    json_obj = json.loads(response.text)
+    birthday_wish = json_obj['Message']
+    birthday_wish += """
+I am so proud of you {}.""".format(recipient_name)
+    try:
+        message = client.messages.create(
+            body=birthday_wish,
+     	    from_='whatsapp:+14155238886',  # The default Sandbox number provided by Twilio
+     	    to='whatsapp:' + recipient_number
+        )
+
+        print("Birthday wish sent to", recipient_name, "on WhatsApp number", recipient_number)
+        return True
+
+    except Exception as e:
+        print("Something went wrong. Birthday message not sent.")
+        print(repr(e))
+        return False
+
+def create_birthdays_dataframe():
+    """Create a pandas dataframe containing birth date information from a CSV file.
+
+    Args:
+        None
+
+    Returns:
+        A dataframe if successful, otherwise returns False.
+    """
+
+    try:
+        dateparse = lambda x: datetime.strptime(x, "%m-%d-%Y")
+        birthdays_df = pd.read_csv(
+            "birthdays.csv",
+            dtype=str,
+            parse_dates=['Birth Date'],
+            date_parser=dateparse
+        )
+        print(birthdays_df)
+        return birthdays_df
+
+    except Exception as e:
+        print("Something went wrong. Birthdays dataframe not created.")
+        print(repr(e))
+        return False
+
+def check_for_matching_dates():
+    """Calls the send_birthday_wish() function if today is someone's birthday.
+
+    Args:
+        None
+    Returns:
+        True if successful, otherwise returns False.
+    """
+    try:
+        birthdays_df = create_birthdays_dataframe()
+        birthdays_df["day"] = birthdays_df["Birth Date"].dt.day
+        birthdays_df["month"] = birthdays_df["Birth Date"].dt.month
+        today = datetime.now()
+        print(today)
+        for i in range(birthdays_df.shape[0]):
+            birthday_day = birthdays_df.loc[i, "day"]
+            birthday_month = birthdays_df.loc[i, "month"]
+            print(birthday_day,birthday_month,today.day)
+            if today.day == birthday_day and today.month == birthday_month:
+                print('Yes')
+                send_birthday_wish(client, birthdays_df.loc[i, "WhatsApp Number"], birthdays_df.loc[i, "Name"])
+        return True
+
+    except Exception as e:
+        print("Something went wrong. Birthday check not successful.")
+        print(repr(e))
+        return False
+
+scheduler = BackgroundScheduler()
+job = scheduler.add_job(check_for_matching_dates, 'cron', day_of_week ='mon-sun', hour=0, minute=1)
+scheduler.start()
+
+
+if __name__ == '__main__':
+    app.run()
